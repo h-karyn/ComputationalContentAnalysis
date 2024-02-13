@@ -1,0 +1,1243 @@
+<html>
+<head>
+<title>6-Programming Large Language Models with Language.ipynb</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #8c8c8c; font-style: italic;}
+.s1 { color: #080808;}
+.s2 { color: #1750eb;}
+.s3 { color: #0033b3;}
+.s4 { color: #067d17;}
+.s5 { color: #0037a6;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+6-Programming Large Language Models with Language.ipynb</font>
+</center></td></tr></table>
+<pre><span class="s0">#%% md 
+</span><span class="s1"># Programming LLMs with Language 
+ 
+In previous chapters, we saw how we can use the semantic information in large language models (LLMs) through standard nlp pipelines (e.g., classification) or using their underlying embeddings. But LLMs are *natively* programmed through language. Moreover, recent scholarship has both [**argued**](https://aclanthology.org/2023.findings-acl.247/) and then [**demonstrated**](https://proceedings.mlr.press/v202/von-oswald23a.html) how LLMs perform gradient descent on their internal, high-dimensional representations to optimize a response to a language prompt. 
+ 
+In this notebook accompanying the chapter on programming LLMs with language, we will explore various ways we can interact with some of the most powerful deep learning models today using language. 
+ 
+## The landscape of large language models 
+ 
+Since 2023, the deep learning (and especially transformer) paradigm has made massive progress in enabling users to program LLMs with language. As these models begin to flood the mainstream, and with even widely viewed TikTok videos on how to &quot;engineer&quot; prompts, advanced Transformer based models such as GPT-4 and Gemini are accessible to more people than deep learning ever was before. 
+ 
+The most popular of these models today is ChatGPT's family of models, run by OpenAI. There are, however, many other LLMs out there - Google's BARD, Anthropic's Claude, Deep Mind's Gemini, and Meta's open source LLaMa. Moreover, given how fast moving the field has become, ideally, we would prefer to approach this in a program agnostic way, and would point you towards [**LangChain**](https://www.langchain.com/). 
+ 
+The most straightforward way to interact with these models is via their chat based API. To get an idea of how these models do, it's worth jumping onto any of their websites and give them a spin. This is the link to ChatGPT: https://chat.openai.com/. Chat-GPT 3.5 is currently free to use and Chat-GPT-4 can be used with subscription. 
+ 
+While it is impressive - and can improve one's day to day work with respect to coding tasks or information retreival - simple back and forth chat with the model, without stewarding or persisting the interactive content, limits its utility for performing large scale data science, experiments, and analysis. 
+ 
+Such a setup would require an API, where we can pass arguments and text in a controlled environment, automate certain classes of queries, and collect responses for further processing. 
+ 
+In this code, that is what we will do - using a variety of APIs to interact with instances of large language models on a server. This notebook will walk you through various ways you can do that. 
+ 
+The natural alternative is to have a local LLM, but for the kind of LLMs that can effectively be used as a conversational agent (or research assistant!), you would need a LOT of RAM and hardware capacity. We will not assume local hosting in this tutorial, but will have sample code for you to test (outside of Colab, which is not sufficiently large to host a substantial LLM). 
+ 
+&lt;!--## Geneology Diagram / Dialogue Prompt Screenshots--&gt; 
+ 
+## Some links and useful LLMs 
+ 
+Keeping up with the latest LLMs at the top of the pack can be challenging given how quick the field is moving. Academic and production-oriented LLMs also develop at different paces and in different ways. At the moment, there is an active conversation and discussion on LLMs/AI on X/twitter, which is the primary place to really keep ahead of the game - as well as keeping up with Arxiv, and maybe subscribing to a few lists such as the Stanford HAI newsletter (or for more of AI/LLMs and Society view, DAIR). 
+ 
+There are, however, a few &quot;usual suspects&quot; to track for new developments: 
+ 
+[OpenAI](openai.com) 
+ 
+OpenAI offers a variety of different LLMs and APIs addressing different use-cases, including fine-tuning models on your own data. Serious commercial use should be via the APIs, which are currently available by invitation. 
+ 
+[Meta AI LLaMA 2](github.com/facebookresearch/llama/blob/main/MODEL_CARD.md) 
+A collection of related LLMs released by Meta AI (Facebook). Unlike version 1, version 2 is available for commerical and research purposes. 
+ 
+[Google Bard](bard.google.com) 
+Google’s experimental LLM. No public APIs available yet, and chatbot conversations are used for further training, so not yet ready for commercial use. 
+ 
+[Amazon AlexaTM](github.com/amazon-science/alexa-teacher-models) 
+Amazon Science’s LLM, which can be accessed for non-commercial use via AWS SageMaker. 
+ 
+[Anthropic Claude](claude.ai) 
+Unique model because of its large context window (100k+ tokens), allowing it to answer questions about longer documents. API access is only available via inquiries. A chat interface is generally available, but conversations may be used for further training, so not a commercial option. 
+ 
+[Hugging Face](huggingface.co) 
+Hugging Face provides infrastructure support for LLM and other Machine Learning operations, including hosting, training and deployment of models. They also host some internally developed and open-source models such as BLOOM. 
+ 
+Source for links and text - https://www.enthought.com/resource/cheat-sheet-large-language-models-for-scientific-research/ 
+ 
+ 
+ 
+## So where do we start? 
+ 
+We're going to start with Open AI's LLM offering, the ChatGPT family of conversational and text generation models. Why ChatGPT? It was the language models to really kick off LLMs being accessed at the scale it is today--with 100 million users within 2 months--and has often led the leaderboards for multiple language and cognitive tasks, as well as being used by plenty of computational scientists, social scientists, and humanists for their studies. 
+ 
+A caveat of using open AI is that their models are closed, meaning we have to interact via their API only,  that it can be expensive for multiple queries, and that free access is limited to their older models. That being said, given how popular ChatGPT is today, it is worth knowing your way around it - and after having gotten a hand of it, you will find that most other LLMs work in similar ways. We will even share links and examples from James Zou's FrugalGPT later, which explicitly predicts which model will work best, and select the cheapest for your task conditional on performance. 
+ 
+ 
+ 
+ 
+ 
+</span><span class="s0">#%% md 
+</span><span class="s1"># OpenAI API 
+ 
+The OpenAI API is fairly straightforward, with two primary API modes - chat, and completion. We will start with a straightforward exposition of both methods, before moving on to providing distinctive roles and prompts, along with some best practices. 
+ 
+ 
+</span><span class="s0">#%% md 
+</span><span class="s1">## Setting your API Key 
+ 
+To use the Open AI API, you first need an API key. This means you need to make an account on the openAI website. Once you've done that, you would want to store this key in your environment variables, so that it isn't leaked. 
+ 
+Follow this link on [best practices for API key safety](https://help.openai.com/en/articles/5112595-best-practices-for-api-key-safety), which will help you keep those issues sorted. 
+ 
+Once you've setup an account and stored your API key securely, the first cell will help you get your environment ready to start using openAI models. 
+ 
+NOTE: LLM frameworks and packages keep changing. This notebook was written with version 1.10.0. Using a different version will likely break things. 
+ 
+This is not code for you to copy paste into projects - it is to walk you through how these tools work, and then adapt accordingly for your own use cases. 
+</span><span class="s0">#%% 
+</span><span class="s1">! pip install openai==</span><span class="s2">1.10.0</span>
+<span class="s0"># openai-1.10.0</span>
+<span class="s0">#%% 
+</span><span class="s3">import </span><span class="s1">os</span>
+<span class="s3">import </span><span class="s1">openai</span>
+<span class="s0">#%% md 
+</span><span class="s1">A note here - if you are working locally, use the code below to grab your API key. If not, the cell after this allows you to enter your key in the notebook in a way where it is not persisted when you save the notebook. If nothing else works...copy and paste your key into the notebook, but make sure not to share it! 
+</span><span class="s0">#%% 
+</span><span class="s1">openai.api_key = os.environ[</span><span class="s4">&quot;OPENAI_API_KEY&quot;</span><span class="s1">]</span>
+<span class="s0">#%% md 
+</span><span class="s1">The code below lets you enter it in the notebook. 
+</span><span class="s0">#%% 
+# import getpass</span>
+<span class="s0"># OPENAI_API_KEY = getpass.getpass()</span>
+<span class="s0">#%% 
+# openai.api_key = OPENAI_API_KEY</span>
+<span class="s0">#%% md 
+</span><span class="s1">## Interacting with the model 
+ 
+In this section we will learn how to interact with the GPT models by OpenAI. Since July 2023, OpenAI have updated their API to focus on their &quot;Chat Completions&quot; API, as opposed to just completing a text input (also a sign of how far we've come with language models)!. 
+ 
+What is going on here with these kinds of models? They are state-less, memory-less, generative language models that have been trained with unsupervised learning, supervised learning, and potentially reinforcement learning with human feedback - meaning that they not only have the raw knowledge, but also the ability to recall and manipulate that knowledge into a form useful for us. 
+ 
+When we're chatting with the model on the OpenAI webpage's API, what's happening is that they are using a version of the API underneath it. They are setting a context to the model (which comes through the &quot;system&quot; content), retreiving a response, and sending it back to us. It appears that the model has a working memory of the conversation - but in fact, every new message we type, has the previous chat appended to it as context, and then sent back. 
+ 
+So what we will do now is see how this looks like internally, with the code below. We are using GPT-3.5  (the first Chat-GPT)because it is cheaper - but feel free to go all in and grab GPT-4, a superior model (but note that it will add up!) 
+ 
+Our first step is to setup messages - which involve a dictionary that sets up a role and content. We will see a very simple use case here. 
+</span><span class="s0">#%% 
+</span><span class="s3">from </span><span class="s1">openai </span><span class="s3">import </span><span class="s1">OpenAI</span>
+<span class="s0">#%% 
+</span><span class="s1">client = OpenAI(</span>
+    <span class="s1">api_key=openai.api_key,</span>
+<span class="s1">)</span>
+<span class="s0">#%% 
+</span><span class="s1">messages = [{</span><span class="s4">&quot;role&quot;</span><span class="s1">: </span><span class="s4">&quot;user&quot;</span><span class="s1">, </span><span class="s4">&quot;content&quot;</span><span class="s1">: </span><span class="s4">&quot;What are some things that go well with toast in the morning?&quot;</span><span class="s1">}]</span>
+<span class="s0">#%% 
+</span><span class="s1">response =  client.chat.completions.create(model=</span><span class="s4">&quot;gpt-3.5-turbo&quot;</span><span class="s1">, messages=messages)</span>
+<span class="s0">#%% md 
+</span><span class="s1">That bit of code would take a few seconds (or more depending on server time), but you would then have your responses. Note that we used the most simple version in this bit of code. We will expand on the selection of other hyperparameters in code to come. Before that, let's have a look at the object returned. 
+</span><span class="s0">#%% 
+</span><span class="s1">response</span>
+<span class="s0">#%% md 
+</span><span class="s1">So we see an ID, the object, model information, and then maybe what we are most interested in - the response, under &quot;choices&quot;. We also see some usage statistics on how many tokens were used. Let's look at the response more closely. 
+</span><span class="s0">#%% 
+</span><span class="s1">response.choices[</span><span class="s2">0</span><span class="s1">]</span>
+<span class="s0">#%% md 
+</span><span class="s1">So we see a role (the model, assistant) and content. 
+</span><span class="s0">#%% 
+</span><span class="s1">response.choices[</span><span class="s2">0</span><span class="s1">].message.content</span>
+<span class="s0">#%% md 
+</span><span class="s1">Great - we see a coherent and high quality response for what to eat with toast! So now, what if this is a regular task we wish to perform -- ask ChatGPT about food suggestions -- but we are vegetarian, and want the model to remember that as we move forward? 
+ 
+And what if we like our food suggestion bots to talk only like a charicatured pirate? 
+ 
+Both (and more) are possible, and we will see how to do this in the coming section. 
+</span><span class="s0">#%% md 
+</span><span class="s1">## Programming your model - personalities and prompts 
+ 
+We mentioned how a core aspect of how these models effectively work as chat bots is the ability to append a &quot;context&quot; embedding. For example, if you are using the OpenAI GUI, you have the option to &quot;let the model know anything about you&quot;, as well as give instructions on how you want the model to respond. What is likely happening under the hood is a way of passing this on as an embedding to the model, which is itself often further tuned with RLHF (Reinforcement Learning with Human Feedback) to parse the context embedding sufficiently well to keep it in mind for the response. 
+ 
+As we will see in later notebook examples in this notebook, it is possible to use the API to tap into this functionality - and effectively be able to program a &quot;personality&quot; into your model, or give it vital context to remember when responding to you. We illustrate this quite simply with our same breakfast model, this time reminding it that you are vegetarian. 
+</span><span class="s0">#%% 
+</span><span class="s1">messages = [{</span><span class="s4">&quot;role&quot;</span><span class="s1">: </span><span class="s4">&quot;system&quot;</span><span class="s1">, </span><span class="s4">&quot;content&quot;</span><span class="s1">: </span><span class="s4">&quot;You are my breakfast assistant. Don't forget that I am a vegetarian.&quot;</span><span class="s1">},</span>
+            <span class="s1">{</span><span class="s4">&quot;role&quot;</span><span class="s1">: </span><span class="s4">&quot;user&quot;</span><span class="s1">, </span><span class="s4">&quot;content&quot;</span><span class="s1">: </span><span class="s4">&quot;What are some things that go well with toast in the morning?&quot;</span><span class="s1">}]</span>
+<span class="s0">#%% 
+</span><span class="s1">response = openai.chat.completions.create(model=</span><span class="s4">&quot;gpt-3.5-turbo&quot;</span><span class="s1">, messages=messages)</span>
+<span class="s0">#%% 
+</span><span class="s1">response.choices[</span><span class="s2">0</span><span class="s1">].message.content</span>
+<span class="s0">#%% md 
+</span><span class="s1">Great! Now as long as we need food advice, as long as throw in the &quot;system&quot; role to remember your preferences, it will take that into account. In practice it is appending the embedding of the context message to the first pass you send over. 
+ 
+This is one style of doing &quot;personalities&quot; with prompts. The other is to merely add text before your message begins to align the model to the results you require. Different models will respond differently to prompts. Here is an article from OpenAI on best practices for prompt engineering for its models. 
+ 
+https://help.openai.com/en/articles/6654000-best-practices-for-prompt-engineering-with-openai-api 
+</span><span class="s0">#%% md 
+</span><span class="s1">## &lt;font color=&quot;red&quot;&gt;*Exercise 1*&lt;/font&gt; 
+ 
+&lt;font color=&quot;red&quot;&gt;As this week's challeging questions asks, we'd like you to think how LLM can help your final project.  Try to use the OpenAI API to analyze a small-sized dataset (Remember to monitor API use on your OpenAI account!). The data could involve a sample from the dataset you are preparing for your final project or some others. If it's going be a conventional task like classification, compare and see how it could beat (or be defeated by) other algorithms you have used in previous weeks. If it's a special task that you cannot find a learned algorithm to compare with, evaluate its performance on your own and explore whether you can improve its performance by changing hyperparameters(see [here](https://platform.openai.com/docs/api-reference/chat/create)), the prompt, etc. 
+</span><span class="s0">#%% md 
+</span><span class="s1">In this exercise, we will use the OpenAI API to analyze whether gpt3.5 is able to tell most sociable people from the most unsociable people in a dataset. We will use the BFI dataset (from my undergrade research lab), which is a dataset of participants' answers to a personality test - Big Five Inventory 2.  
+</span><span class="s0">#%% 
+# load bfi dataset</span>
+<span class="s3">import </span><span class="s1">pandas </span><span class="s3">as </span><span class="s1">pd</span>
+<span class="s1">bfi = pd.read_csv(</span><span class="s4">&quot;participant.csv&quot;</span><span class="s1">)</span>
+
+<span class="s0"># fileter the row where self_condition is E</span>
+<span class="s1">bfi = bfi[bfi[</span><span class="s4">'self_condition'</span><span class="s1">] == </span><span class="s4">'E'</span><span class="s1">]</span>
+
+<span class="s0"># filter out rows where self_BFI_1, self_BFI_16, self_BFI_31, self_BFI_46 are not answered</span>
+<span class="s1">bfi = bfi.dropna(subset=[</span><span class="s4">'self_BFI_1'</span><span class="s1">, </span><span class="s4">'self_BFI_16'</span><span class="s1">, </span><span class="s4">'self_BFI_31'</span><span class="s1">, </span><span class="s4">'self_BFI_46'</span><span class="s1">])</span>
+
+<span class="s0"># create a new column called self_ext_sociability, which is the sum of  self_BFI_1 + self_BFI_16 + self_BFI_31 + self_BFI_46</span>
+<span class="s1">bfi[</span><span class="s4">'self_ext_sociability'</span><span class="s1">] = bfi[</span><span class="s4">'self_BFI_1'</span><span class="s1">] + bfi[</span><span class="s4">'self_BFI_16'</span><span class="s1">] + bfi[</span><span class="s4">'self_BFI_31'</span><span class="s1">] + bfi[</span><span class="s4">'self_BFI_46'</span><span class="s1">]</span>
+
+<span class="s0">#preview the dataset</span>
+<span class="s1">bfi.head(</span><span class="s2">2</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Let's create two different dataframes of the top 30 and bottom 30 participants in terms of self_ext_sociability. 
+</span><span class="s0">#%% 
+# sort the dataframe by self_ext_sociability</span>
+<span class="s1">bfi = bfi.sort_values(by=</span><span class="s4">'self_ext_sociability'</span><span class="s1">, ascending=</span><span class="s3">False</span><span class="s1">)</span>
+
+<span class="s0"># create two dataframes of the top 30 and bottom 30 participants</span>
+<span class="s1">top_30 = bfi.head(</span><span class="s2">30</span><span class="s1">).copy()</span>
+<span class="s1">bottom_30 = bfi.tail(</span><span class="s2">30</span><span class="s1">).copy()</span>
+
+<span class="s0"># label the top 30 as sociable and the bottom 30 as unsociable</span>
+<span class="s1">top_30.loc[:, </span><span class="s4">'label'</span><span class="s1">] = </span><span class="s4">'sociable'</span>
+<span class="s1">bottom_30.loc[:, </span><span class="s4">'label'</span><span class="s1">] = </span><span class="s4">'unsociable'</span>
+
+<span class="s0"># combine the two dataframes</span>
+<span class="s1">sociability = pd.concat([top_30, bottom_30])</span>
+
+<span class="s0"># randomize the order of the rows</span>
+<span class="s1">sociability = sociability.sample(frac=</span><span class="s2">1</span><span class="s1">).reset_index(drop=</span><span class="s3">True</span><span class="s1">)</span>
+
+<span class="s0"># keep columns self_BFI_1, self_BFI_16, self_BFI_31, self_BFI_46, self_ext_sociability, and label</span>
+<span class="s1">sociability = sociability[[</span><span class="s4">'self_BFI_1'</span><span class="s1">, </span><span class="s4">'self_BFI_16'</span><span class="s1">, </span><span class="s4">'self_BFI_31'</span><span class="s1">, </span><span class="s4">'self_BFI_46'</span><span class="s1">, </span><span class="s4">'self_ext_sociability'</span><span class="s1">, </span><span class="s4">'label'</span><span class="s1">]]</span>
+
+<span class="s0"># preview the dataframe</span>
+<span class="s1">sociability.head(</span><span class="s2">2</span><span class="s1">)</span>
+<span class="s0">#%% 
+# Mapping function with NaN handling</span>
+<span class="s3">def </span><span class="s1">map_score_to_statement(score, question_index):</span>
+    <span class="s3">if </span><span class="s1">pd.isna(score):  </span><span class="s0"># Check for NaN</span>
+        <span class="s3">return </span><span class="s4">&quot;No response&quot;  </span><span class="s0"># You can return an empty string or a placeholder text</span>
+
+    <span class="s3">if </span><span class="s1">question_index == </span><span class="s2">1</span><span class="s1">:</span>
+        <span class="s1">options = [</span><span class="s4">&quot;I am very reserved, unsociable.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am quite reserved, unsociable.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am somewhat outgoing, sociable.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am quite outgoing, sociable.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am very outgoing, sociable.&quot;</span><span class="s1">]</span>
+    <span class="s3">elif </span><span class="s1">question_index == </span><span class="s2">16</span><span class="s1">:</span>
+        <span class="s1">options = [</span><span class="s4">&quot;I am almost always quiet.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am often quiet.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am sometimes quiet.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am rarely quiet.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am almost never quiet.&quot;</span><span class="s1">]</span>
+    <span class="s3">elif </span><span class="s1">question_index == </span><span class="s2">31</span><span class="s1">:</span>
+        <span class="s1">options = [</span><span class="s4">&quot;I am almost always shy, introverted.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am often shy, introverted.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am sometimes shy, introverted.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am rarely shy, introverted.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am almost never shy, introverted.&quot;</span><span class="s1">]</span>
+    <span class="s3">elif </span><span class="s1">question_index == </span><span class="s2">46</span><span class="s1">:</span>
+        <span class="s1">options = [</span><span class="s4">&quot;I am not at all talkative.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am not particularly talkative.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am somewhat talkative.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am quite talkative.&quot;</span><span class="s1">,</span>
+                   <span class="s4">&quot;I am very talkative.&quot;</span><span class="s1">]</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s3">return </span><span class="s4">&quot;Invalid question index&quot;</span>
+
+    <span class="s0"># Adjusting for 0-based indexing</span>
+    <span class="s3">return </span><span class="s1">options[int(score)-</span><span class="s2">1</span><span class="s1">]</span>
+<span class="s0">#%% 
+# Applying the function to each relevant column and concatenating the responses</span>
+<span class="s3">for </span><span class="s1">col </span><span class="s3">in </span><span class="s1">[</span><span class="s4">'self_BFI_1'</span><span class="s1">, </span><span class="s4">'self_BFI_16'</span><span class="s1">, </span><span class="s4">'self_BFI_31'</span><span class="s1">, </span><span class="s4">'self_BFI_46'</span><span class="s1">]:</span>
+    <span class="s1">question_index = int(col.split(</span><span class="s4">'_'</span><span class="s1">)[-</span><span class="s2">1</span><span class="s1">])</span>
+    <span class="s1">sociability[col + </span><span class="s4">'_answer'</span><span class="s1">] = sociability[col].apply(</span><span class="s3">lambda </span><span class="s1">x: map_score_to_statement(x, question_index))</span>
+
+<span class="s0"># Concatenating the responses into a new column</span>
+<span class="s1">sociability[</span><span class="s4">'complete_answer'</span><span class="s1">] = sociability[[</span><span class="s4">'self_BFI_1_answer'</span><span class="s1">, </span><span class="s4">'self_BFI_16_answer'</span><span class="s1">, </span><span class="s4">'self_BFI_31_answer'</span><span class="s1">, </span><span class="s4">'self_BFI_46_answer'</span><span class="s1">]].agg(</span><span class="s4">'. '</span><span class="s1">.join, axis=</span><span class="s2">1</span><span class="s1">)</span>
+
+<span class="s0"># Previewing the dataframe</span>
+<span class="s1">sociability.head(</span><span class="s2">2</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Let's test with the first participant's complete answer. 
+</span><span class="s0">#%% 
+</span><span class="s3">def </span><span class="s1">classify_sociability(description):</span>
+    
+    <span class="s1">prompt = [{</span><span class="s4">&quot;role&quot;</span><span class="s1">: </span><span class="s4">&quot;user&quot;</span><span class="s1">, </span>
+               <span class="s4">&quot;content&quot;</span><span class="s1">: </span><span class="s4">f&quot;Based on the following personality description: '</span><span class="s5">{</span><span class="s1">description</span><span class="s5">}</span><span class="s4">', classify the person's sociability level. &quot;</span>
+                          <span class="s4">f&quot;Directly classify the person's sociability level as 'High' or 'Low'.&quot;</span>
+               
+               <span class="s1">}]</span>
+    <span class="s0"># </span>
+    <span class="s0"># prompt = f&quot;Based on the following personality description: '{description}', classify the person's sociability level as 'High' or 'Low'.&quot;</span>
+    
+    <span class="s1">response = client.chat.completions.create(</span>
+        <span class="s1">model=</span><span class="s4">&quot;gpt-3.5-turbo&quot;</span><span class="s1">,</span>
+        <span class="s1">messages = prompt,</span>
+        <span class="s1">temperature=</span><span class="s2">0.1</span>
+    <span class="s1">)</span>
+    
+    <span class="s1">sociability = response.choices[</span><span class="s2">0</span><span class="s1">].message.content</span>
+    <span class="s3">return </span><span class="s1">sociability</span>
+
+<span class="s0"># Personality description</span>
+<span class="s1">description = </span><span class="s4">&quot;I am quite outgoing, sociable. I am almost never quiet. I am rarely shy, introverted. I am very talkative.&quot;</span>
+
+<span class="s0"># Classify sociability</span>
+<span class="s1">sociability_level = classify_sociability(description)</span>
+<span class="s1">print(</span><span class="s4">f&quot;Sociability Level: </span><span class="s5">{</span><span class="s1">sociability_level</span><span class="s5">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Let us apply the classification to the whole dataset. 
+</span><span class="s0">#%% 
+</span><span class="s1">sociability[</span><span class="s4">'predicted_sociability'</span><span class="s1">] = sociability[</span><span class="s4">'complete_answer'</span><span class="s1">].apply(classify_sociability)</span>
+<span class="s0">#%% 
+</span><span class="s1">sociability.head(</span><span class="s2">5</span><span class="s1">)</span>
+<span class="s0">#%% 
+# get the last word of the predicted_sociability column</span>
+<span class="s1">sociability[</span><span class="s4">'predicted_label'</span><span class="s1">] = sociability[</span><span class="s4">'predicted_sociability'</span><span class="s1">].apply(</span><span class="s3">lambda </span><span class="s1">x: x.split()[-</span><span class="s2">1</span><span class="s1">])</span>
+
+<span class="s0"># preview the dataframe</span>
+<span class="s1">sociability.head(</span><span class="s2">5</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Further clean the data  
+</span><span class="s0">#%% 
+# remove all the punctuations in predicted_label</span>
+<span class="s3">import </span><span class="s1">string</span>
+
+<span class="s1">sociability[</span><span class="s4">'predicted_label'</span><span class="s1">] = sociability[</span><span class="s4">'predicted_label'</span><span class="s1">].str.translate(str.maketrans(</span><span class="s4">''</span><span class="s1">, </span><span class="s4">''</span><span class="s1">, string.punctuation))</span>
+
+<span class="s0"># preview the dataframe</span>
+<span class="s1">sociability.head(</span><span class="s2">5</span><span class="s1">)</span>
+<span class="s0">#%% 
+# change all &quot;low&quot; to &quot;unsociable&quot; and &quot;high&quot; to &quot;sociable&quot;</span>
+<span class="s1">sociability[</span><span class="s4">'predicted_label'</span><span class="s1">] = sociability[</span><span class="s4">'predicted_label'</span><span class="s1">].apply(</span><span class="s3">lambda </span><span class="s1">x: </span><span class="s4">'unsociable' </span><span class="s3">if </span><span class="s1">x == </span><span class="s4">'Low' </span><span class="s3">else </span><span class="s4">'sociable'</span><span class="s1">)</span>
+
+<span class="s0"># preview the dataframe</span>
+<span class="s1">sociability.head(</span><span class="s2">5</span><span class="s1">)</span>
+<span class="s0">#%% 
+# calculate the accuracy, precision, recall, and f1 score</span>
+<span class="s3">from </span><span class="s1">sklearn.metrics </span><span class="s3">import </span><span class="s1">accuracy_score, precision_score, recall_score, f1_score</span>
+
+<span class="s1">accuracy = accuracy_score(sociability[</span><span class="s4">'label'</span><span class="s1">], sociability[</span><span class="s4">'predicted_label'</span><span class="s1">])</span>
+<span class="s1">precision = precision_score(sociability[</span><span class="s4">'label'</span><span class="s1">], sociability[</span><span class="s4">'predicted_label'</span><span class="s1">], pos_label=</span><span class="s4">'sociable'</span><span class="s1">)</span>
+<span class="s1">recall = recall_score(sociability[</span><span class="s4">'label'</span><span class="s1">], sociability[</span><span class="s4">'predicted_label'</span><span class="s1">], pos_label=</span><span class="s4">'sociable'</span><span class="s1">)</span>
+<span class="s1">f1 = f1_score(sociability[</span><span class="s4">'label'</span><span class="s1">], sociability[</span><span class="s4">'predicted_label'</span><span class="s1">], pos_label=</span><span class="s4">'sociable'</span><span class="s1">)</span>
+
+<span class="s1">print(</span><span class="s4">f&quot;Accuracy: </span><span class="s5">{</span><span class="s1">accuracy</span><span class="s5">:</span><span class="s4">.2f</span><span class="s5">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+<span class="s1">print(</span><span class="s4">f&quot;Precision: </span><span class="s5">{</span><span class="s1">precision</span><span class="s5">:</span><span class="s4">.2f</span><span class="s5">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+<span class="s1">print(</span><span class="s4">f&quot;Recall: </span><span class="s5">{</span><span class="s1">recall</span><span class="s5">:</span><span class="s4">.2f</span><span class="s5">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+<span class="s1">print(</span><span class="s4">f&quot;F1 Score: </span><span class="s5">{</span><span class="s1">f1</span><span class="s5">:</span><span class="s4">.2f</span><span class="s5">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Observation  
+ 
+Gpt3.5 is able to classify the most sociable people from the most unsociable people in the dataset perfectly. This is probably becauase the task is too simple for the model. 
+ 
+However, I believe this is a good first step to examine whehter llm can adopt personality traits from psychometric tests. 
+</span><span class="s0">#%% md 
+</span>
+<span class="s0">#%% md 
+</span><span class="s1"># Fine Tuning a local model - LLaMa 2 
+ 
+We would want to provide you with an example of fine-tuning an LLM, but thist task can be computationally expensive, and so we will use the LoRA (a low-rank adaptation) copy of Stanford's Alpaca, a slimmed down fork of LLaMa2, for tuning: https://github.com/TianyiPeng/Colab_for_Alpaca_Lora 
+ 
+Note: In order to run the llama2-7b version, use A100 (on Colab) or better. Consider that A100 costs 13.08 computing units per hour, which is expensive. Take that in mind! 
+</span><span class="s0">#%% 
+</span><span class="s1">%%capture</span>
+<span class="s1">%pip install accelerate peft bitsandbytes transformers trl</span>
+<span class="s0">#%% 
+</span>
+<span class="s3">import </span><span class="s1">os</span>
+<span class="s3">import </span><span class="s1">torch</span>
+<span class="s3">from </span><span class="s1">datasets </span><span class="s3">import </span><span class="s1">load_dataset</span>
+<span class="s3">from </span><span class="s1">transformers </span><span class="s3">import </span><span class="s1">(</span>
+    <span class="s1">AutoModelForCausalLM,</span>
+    <span class="s1">AutoTokenizer,</span>
+    <span class="s1">BitsAndBytesConfig,</span>
+    <span class="s1">HfArgumentParser,</span>
+    <span class="s1">TrainingArguments,</span>
+    <span class="s1">pipeline,</span>
+    <span class="s1">logging,</span>
+<span class="s1">)</span>
+<span class="s3">from </span><span class="s1">peft </span><span class="s3">import </span><span class="s1">LoraConfig, PeftModel</span>
+<span class="s3">from </span><span class="s1">trl </span><span class="s3">import </span><span class="s1">SFTTrainer</span>
+<span class="s0">#%% md 
+</span><span class="s1">## Model Config 
+</span><span class="s0">#%% 
+# Model from Hugging Face hub</span>
+<span class="s1">base_model = </span><span class="s4">&quot;NousResearch/Llama-2-7b-chat-hf&quot;</span>
+
+<span class="s0"># New instruction dataset</span>
+<span class="s1">guanaco_dataset = </span><span class="s4">&quot;mlabonne/guanaco-llama2-1k&quot;</span>
+
+<span class="s0"># Fine-tuned model</span>
+<span class="s1">new_model = </span><span class="s4">&quot;llama-2-7b-chat-guanaco&quot;</span>
+<span class="s0">#%% md 
+</span><span class="s1">Now let's select the dataset with which to fine-tune the model. 
+</span><span class="s0">#%% 
+</span><span class="s1">dataset = load_dataset(guanaco_dataset, split=</span><span class="s4">&quot;train&quot;</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Note that dataset is a special class created by HuggingFace for interaciting models on there with their APIs. It looks like python's built-in list and dictionary and but is slightly different. 
+</span><span class="s0">#%% 
+</span><span class="s1">dataset</span>
+<span class="s0">#%% 
+</span><span class="s1">dataset.features</span>
+<span class="s0">#%% md 
+</span><span class="s1">In this dataset, there is a question [INST]/[/INST] followed by an answer. Alternatively, you could simply include text, as describe in the HuggingFace link below. 
+</span><span class="s0">#%% 
+</span><span class="s1">dataset[</span><span class="s2">0</span><span class="s1">]</span>
+<span class="s0">#%% md 
+</span><span class="s1">**Many of you may want to construct a dataset class instance using your local dataset: refer to [this](https://huggingface.co/docs/datasets/en/create_dataset)** 
+</span><span class="s0">#%% 
+</span><span class="s1">compute_dtype = getattr(torch, </span><span class="s4">&quot;float16&quot;</span><span class="s1">)</span>
+
+<span class="s1">quant_config = BitsAndBytesConfig(</span>
+    <span class="s1">load_in_4bit=</span><span class="s3">True</span><span class="s1">,</span>
+    <span class="s1">bnb_4bit_quant_type=</span><span class="s4">&quot;nf4&quot;</span><span class="s1">,</span>
+    <span class="s1">bnb_4bit_compute_dtype=compute_dtype,</span>
+    <span class="s1">bnb_4bit_use_double_quant=</span><span class="s3">False</span><span class="s1">,</span>
+<span class="s1">)</span>
+<span class="s0">#%% 
+# Load base model</span>
+<span class="s1">model = AutoModelForCausalLM.from_pretrained(</span>
+    <span class="s1">base_model,</span>
+    <span class="s1">quantization_config=quant_config,</span>
+    <span class="s1">device_map={</span><span class="s4">&quot;&quot;</span><span class="s1">: </span><span class="s2">0</span><span class="s1">}</span>
+<span class="s1">)</span>
+<span class="s1">model.config.use_cache = </span><span class="s3">False</span>
+<span class="s1">model.config.pretraining_tp = </span><span class="s2">1</span>
+<span class="s0">#%% 
+# Load LLaMA tokenizer</span>
+<span class="s1">tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=</span><span class="s3">True</span><span class="s1">)</span>
+<span class="s1">tokenizer.pad_token = tokenizer.eos_token</span>
+<span class="s1">tokenizer.padding_side = </span><span class="s4">&quot;right&quot;</span>
+<span class="s0">#%% 
+# Load LoRA configuration</span>
+<span class="s1">peft_args = LoraConfig(</span>
+    <span class="s1">lora_alpha=</span><span class="s2">16</span><span class="s1">,</span>
+    <span class="s1">lora_dropout=</span><span class="s2">0.1</span><span class="s1">,</span>
+    <span class="s1">r=</span><span class="s2">32</span><span class="s1">, </span><span class="s0"># the rank of the adaptation</span>
+    <span class="s1">bias=</span><span class="s4">&quot;none&quot;</span><span class="s1">,</span>
+    <span class="s1">task_type=</span><span class="s4">&quot;CAUSAL_LM&quot;</span><span class="s1">,</span>
+<span class="s1">)</span>
+<span class="s0">#%% 
+# Set training parameters</span>
+<span class="s1">training_params = TrainingArguments(</span>
+    <span class="s1">output_dir=</span><span class="s4">&quot;./results&quot;</span><span class="s1">,</span>
+    <span class="s1">num_train_epochs=</span><span class="s2">1</span><span class="s1">,</span>
+    <span class="s1">per_device_train_batch_size=</span><span class="s2">2</span><span class="s1">,</span>
+    <span class="s1">gradient_accumulation_steps=</span><span class="s2">1</span><span class="s1">,</span>
+    <span class="s1">optim=</span><span class="s4">&quot;paged_adamw_32bit&quot;</span><span class="s1">,</span>
+    <span class="s1">save_steps=</span><span class="s2">25</span><span class="s1">,</span>
+    <span class="s1">logging_steps=</span><span class="s2">25</span><span class="s1">,</span>
+    <span class="s1">learning_rate=</span><span class="s2">2e-4</span><span class="s1">,</span>
+    <span class="s1">weight_decay=</span><span class="s2">0.001</span><span class="s1">,</span>
+    <span class="s1">fp16=</span><span class="s3">True</span><span class="s1">, </span><span class="s0"># speed up</span>
+    <span class="s1">bf16=</span><span class="s3">False</span><span class="s1">,</span>
+    <span class="s1">max_grad_norm=</span><span class="s2">0.3</span><span class="s1">,</span>
+    <span class="s1">max_steps=-</span><span class="s2">1</span><span class="s1">,</span>
+    <span class="s1">warmup_ratio=</span><span class="s2">0.03</span><span class="s1">,</span>
+    <span class="s1">group_by_length=</span><span class="s3">True</span><span class="s1">,</span>
+    <span class="s1">lr_scheduler_type=</span><span class="s4">&quot;constant&quot;</span><span class="s1">,</span>
+    <span class="s1">report_to=</span><span class="s4">&quot;tensorboard&quot;</span>
+<span class="s1">)</span>
+<span class="s0">#%% 
+# Set supervised fine-tuning parameters</span>
+<span class="s1">trainer = SFTTrainer(</span>
+    <span class="s1">model=model,</span>
+    <span class="s1">train_dataset=dataset,</span>
+    <span class="s1">peft_config=peft_args,</span>
+    <span class="s1">dataset_text_field=</span><span class="s4">&quot;text&quot;</span><span class="s1">,</span>
+    <span class="s1">max_seq_length=</span><span class="s3">None</span><span class="s1">,</span>
+    <span class="s1">tokenizer=tokenizer,</span>
+    <span class="s1">args=training_params,</span>
+    <span class="s1">packing=</span><span class="s3">False</span><span class="s1">,</span>
+<span class="s1">)</span>
+<span class="s0">#%% 
+# Train model</span>
+<span class="s1">trainer.train()</span>
+<span class="s0">#%% 
+# Save trained model</span>
+<span class="s1">trainer.model.save_pretrained(new_model)</span>
+<span class="s0">#%% 
+# save tokenizer</span>
+<span class="s1">trainer.tokenizer.save_pretrained(new_model)</span>
+<span class="s0">#%% 
+</span><span class="s1">pwd</span>
+<span class="s0">#%% 
+</span><span class="s1">ls</span>
+<span class="s0">#%% 
+</span><span class="s1">!kill </span><span class="s2">26235</span>
+<span class="s0">#%% 
+</span><span class="s3">from </span><span class="s1">tensorboard </span><span class="s3">import </span><span class="s1">notebook</span>
+<span class="s1">log_dir = </span><span class="s4">&quot;results/runs&quot;</span>
+<span class="s1">notebook.start(</span><span class="s4">&quot;--logdir {} --port 4000&quot;</span><span class="s1">.format(log_dir))</span>
+<span class="s0">#%% 
+</span><span class="s3">from </span><span class="s1">transformers </span><span class="s3">import </span><span class="s1">AutoModelForCausalLM, AutoTokenizer, TextGenerationPipeline</span>
+
+<span class="s0"># Ignore warnings</span>
+<span class="s1">logging.set_verbosity(logging.CRITICAL)</span>
+
+<span class="s0"># Assuming 'new_model' is defined and contains the name of your model directory</span>
+<span class="s1">model_path = </span><span class="s4">f'/content/</span><span class="s5">{</span><span class="s1">new_model</span><span class="s5">}</span><span class="s4">'</span>
+
+<span class="s0"># Load the model and tokenizer directly</span>
+<span class="s1">model = AutoModelForCausalLM.from_pretrained(model_path)</span>
+<span class="s1">tokenizer = AutoTokenizer.from_pretrained(model_path)</span>
+
+<span class="s0"># Create the text generation pipeline manually</span>
+<span class="s1">pipe = TextGenerationPipeline(model=model, tokenizer=tokenizer, task=</span><span class="s4">&quot;text-generation&quot;</span><span class="s1">, max_length=</span><span class="s2">200</span><span class="s1">)</span>
+
+<span class="s0"># Run text generation</span>
+<span class="s1">prompt = </span><span class="s4">&quot;Who is Leonardo Da Vinci?&quot;</span>
+<span class="s1">result = pipe(</span><span class="s4">f&quot;&lt;s&gt;[INST] </span><span class="s5">{</span><span class="s1">prompt</span><span class="s5">} </span><span class="s4">[/INST]&quot;</span><span class="s1">)</span>
+<span class="s1">print(result[</span><span class="s2">0</span><span class="s1">][</span><span class="s4">'generated_text'</span><span class="s1">])</span>
+
+<span class="s0">#%% 
+</span><span class="s1">prompt = </span><span class="s4">&quot;What is Datacamp Career track?&quot;</span>
+<span class="s1">result = pipe(</span><span class="s4">f&quot;&lt;s&gt;[INST] </span><span class="s5">{</span><span class="s1">prompt</span><span class="s5">} </span><span class="s4">[/INST]&quot;</span><span class="s1">)</span>
+<span class="s1">print(result[</span><span class="s2">0</span><span class="s1">][</span><span class="s4">'generated_text'</span><span class="s1">])</span>
+<span class="s0">#%% md 
+</span><span class="s1">Looks great! If you'd like to push your fine-tuned model to Huggingface: 
+</span><span class="s0">#%% 
+</span><span class="s1">!huggingface-cli login</span>
+<span class="s0">#%% 
+# Reload model in FP16 and merge it with LoRA weights</span>
+<span class="s1">load_model = AutoModelForCausalLM.from_pretrained(</span>
+    <span class="s1">base_model,</span>
+    <span class="s1">low_cpu_mem_usage=</span><span class="s3">True</span><span class="s1">,</span>
+    <span class="s1">return_dict=</span><span class="s3">True</span><span class="s1">,</span>
+    <span class="s1">torch_dtype=torch.float16,</span>
+    <span class="s1">device_map={</span><span class="s4">&quot;&quot;</span><span class="s1">: </span><span class="s2">0</span><span class="s1">},</span>
+<span class="s1">)</span>
+
+<span class="s1">model = PeftModel.from_pretrained(load_model, new_model)</span>
+<span class="s1">model = model.merge_and_unload()</span>
+
+<span class="s0"># Reload tokenizer to save it</span>
+<span class="s1">tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=</span><span class="s3">True</span><span class="s1">)</span>
+<span class="s1">tokenizer.add_special_tokens({</span><span class="s4">'pad_token'</span><span class="s1">: </span><span class="s4">'[PAD]'</span><span class="s1">})</span>
+<span class="s1">tokenizer.pad_token = tokenizer.eos_token</span>
+<span class="s1">tokenizer.padding_side = </span><span class="s4">&quot;right&quot;</span>
+<span class="s0">#%% 
+</span><span class="s1">model.push_to_hub(new_model, use_temp_dir=</span><span class="s3">False</span><span class="s1">)</span>
+<span class="s1">tokenizer.push_to_hub(new_model, use_temp_dir=</span><span class="s3">False</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">## &lt;font color=&quot;red&quot;&gt;*Exercise 2*&lt;/font&gt; 
+ 
+&lt;font color=&quot;red&quot;&gt;Fine-tune an LLM. You can either use the model (llama-2-7b) in the example code or find another open-source LLM. You may use datasets provided by HuggingFace or a dataset you collect from somewhere else (e.g., for your final project). If the task happens to be the same as in exercise 1, compare the performance between the OpenAI LLM and your fine-tuned LLM. Also compare the performance between the &quot;vanilla&quot; un-tuned and the fine-tuned LLM. 
+</span><span class="s0">#%% md 
+</span><span class="s1"># Triage Multiple LLMs - FrugalGPT 
+ 
+ 
+Sometimes you would like to select the right LLM for a job conditional on context-specific performance (e.g., speed and accuracy) or other, task-relevant criteria. For example, many LLMs, including most of those remotely hosted, only allow queries for a fee (e.g., GPT-4, Claude). You might want the best AND cheapest LLM for task. Here we introduce code associated with the [“FrugalGPT”](https://arxiv.org/abs/2305.05176) approach framework proposed by James Zou and colleagues that creates LLM “cascades” to compare sequences of different models, tuning them for performance on a task (e.g., sentiment analysis for a collection of Reddit posts), then evaluating them across the criteria of performance and cost. You can generalize this approach to consider other criteria of relevance (e.g., generation time, performance on multiple separate tasks, etc.). The associated code repository [here](https://github.com/stanford-futuredata/FrugalGPT/blob/main/README.md). (Note that other teams have used LLM “cascades” in a different way, building probabilistic models that to improve on the composition of multiple models, as described further [below](https://model-cascades.github.io/).) 
+ 
+The code in this section is lifted from that repository. 
+ 
+## FrugalGPT 
+ 
+Below, we will demonstrate two techniques offered by FrugalGPT to build cost-efficient LLM applications. The first techniques, LLMforAll, allows the users to query various LLM APIs via a unified inferface. The sceond one, LLMCascade, automates and optimizes the query process given a user-defined budget constraint. 
+ 
+NB: You are strongly advised to use accelerated hardware (GPU/TPU) to run this notebook. 
+</span><span class="s0">#%% md 
+</span><span class="s1">## Installation 
+Let us start by installing FrugalGPT (if you haven't yet!). 
+</span><span class="s0">#%% 
+# set up the environment</span>
+<span class="s1">%%capture</span>
+<span class="s1">! git clone https://github.com/stanford-futuredata/FrugalGPT</span>
+<span class="s1">%cd FrugalGPT</span>
+<span class="s1">! pip install git+https://github.com/stanford-futuredata/FrugalGPT</span>
+<span class="s1">! wget  https://github.com/lchen001/DataHolder/releases/download/v0</span><span class="s2">.0.1</span><span class="s1">/HEADLINES.zip</span>
+<span class="s1">! unzip HEADLINES.zip -d strategy/</span>
+<span class="s1">! rm HEADLINES.zip</span>
+<span class="s1">! wget -P db/ https://github.com/lchen001/DataHolder/releases/download/v0</span><span class="s2">.0.1</span><span class="s1">/HEADLINES.sqlite</span>
+<span class="s1">! wget -P db/ https://github.com/lchen001/DataHolder/releases/download/v0</span><span class="s2">.0.1</span><span class="s1">/qa_cache.sqlite</span>
+<span class="s0">#%% 
+</span><span class="s1">%load_ext autoreload</span>
+<span class="s1">%autoreload </span><span class="s2">2</span>
+<span class="s3">import </span><span class="s1">sys, json, copy</span>
+<span class="s3">import </span><span class="s1">logging</span>
+<span class="s1">logging.disable(logging.CRITICAL)</span>
+<span class="s1">sys.path.append(</span><span class="s4">&quot;src/&quot;</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">## Setup 
+Next, let us set up the environment and API keys. You do _not_ need API keys to run the notebook! They are only needed if you want to use FrugalGPT for your own queries. 
+#### NB: _For your own queries, not all API keys are needed, too. If you only want to leverage LLMs from, e.g., OpenAI and AI21, setting up API keys for them is sufficient._ 
+</span><span class="s0">#%% 
+</span><span class="s3">import </span><span class="s1">os</span>
+<span class="s1">os.environ[</span><span class="s4">'OPENAI_API_KEY'</span><span class="s1">] = </span><span class="s4">'OPENAI_API_KEY'</span>
+<span class="s1">os.environ[</span><span class="s4">'AI21_STUDIO_API_KEY'</span><span class="s1">] = </span><span class="s4">'AI21_STUDIO_API_KEY'</span>
+<span class="s1">os.environ[</span><span class="s4">'COHERE_STUDIO_API_KEY'</span><span class="s1">] = </span><span class="s4">'COHERE_STUDIO_API_KEY'</span>
+<span class="s1">os.environ[</span><span class="s4">'TEXTSYNTH_API_SECRET_KEY'</span><span class="s1">] = </span><span class="s4">'TEXTSYNTH_API_SECRET_KEY'</span>
+<span class="s1">os.environ[</span><span class="s4">'ANTHROPIC_API_KEY'</span><span class="s1">] = </span><span class="s4">'ANTHROPIC_API_KEY'</span>
+<span class="s3">from </span><span class="s1">IPython.display </span><span class="s3">import </span><span class="s1">display</span>
+<span class="s3">import </span><span class="s1">FrugalGPT</span>
+<span class="s1">supported_LLM = FrugalGPT.getservicename()</span>
+<span class="s1">print(</span><span class="s4">&quot;supported LLMs:&quot;</span><span class="s1">,supported_LLM)</span>
+<span class="s0">#%% md 
+</span><span class="s1">## 1. LLMforAll: One interface for all LLM services 
+Let us first study an example for LLMforAll, an interface that unifies all existing services.   
+</span><span class="s0">#%% 
+</span><span class="s1">MyLLMforAll = FrugalGPT.LLMforAll()</span>
+<span class="s1">query = </span><span class="s4">&quot;Question: Who is Matei Zaharia in 2023?</span><span class="s5">\n</span><span class="s4">Answer:&quot;</span>
+<span class="s1">service_name = supported_LLM[-</span><span class="s2">1</span><span class="s1">]</span>
+<span class="s1">genparams = FrugalGPT.GenerationParameter(max_tokens=</span><span class="s2">50</span><span class="s1">, temperature=</span><span class="s2">0.1</span><span class="s1">, stop=[</span><span class="s4">'</span><span class="s5">\n\n\n\n</span><span class="s4">'</span><span class="s1">])</span>
+<span class="s1">answer = MyLLMforAll.get_completion(query,service_name,genparams=genparams)</span>
+<span class="s1">cost = MyLLMforAll.get_cost()</span>
+<span class="s1">print(</span><span class="s4">&quot;API:&quot;</span><span class="s1">,service_name,</span><span class="s4">&quot;answer:&quot;</span><span class="s1">,answer,</span><span class="s4">&quot;cost:&quot;</span><span class="s1">,cost)</span>
+<span class="s0">#%% md 
+</span><span class="s1">The above code snippet shows how to use LLMforAll. Its function get_completion gives a unified inferface for all LLMs: it takes the query, the generation parameters (such as temperature), and the service name as input, and then gives the corresponding generation. The cost can be obtained by calling get_cost(). 
+</span><span class="s0">#%% 
+</span><span class="s1">responses = MyLLMforAll.get_completion_allservice(query, supported_LLM, genparams=genparams)</span>
+<span class="s1">print(</span><span class="s4">&quot;full responses&quot;</span><span class="s1">)</span>
+<span class="s1">display(responses)</span>
+<span class="s0">#%% md 
+</span><span class="s1">## 2. LLMCascade: Optimizing performance within budget constraints 
+Next let us use LLMCascade to automatically optimize the overall performance given a budget constraint. 
+</span><span class="s0">#%% md 
+</span><span class="s1">### Example usage: predicting gold price trends from financial news 
+Let us first create a few NLP queries that asks LLM to predict gold price trends. 
+</span><span class="s0">#%% 
+</span><span class="s1">dev = [[</span><span class="s4">'Q: april gold down 20 cents to settle at $1,116.10/oz</span><span class="s5">\n</span><span class="s4">A:'</span><span class="s1">, </span><span class="s4">'down'</span><span class="s1">,</span><span class="s4">'0'</span><span class="s1">],</span>
+       <span class="s1">[</span><span class="s4">'Q: gold suffers third straight daily decline</span><span class="s5">\n</span><span class="s4">A:'</span><span class="s1">, </span><span class="s4">'down'</span><span class="s1">,</span><span class="s4">'1'</span><span class="s1">],</span>
+       <span class="s1">[</span><span class="s4">'Q: Gold futures edge up after two-session decline</span><span class="s5">\n</span><span class="s4">A:'</span><span class="s1">, </span><span class="s4">'up'</span><span class="s1">,</span><span class="s4">'2'</span><span class="s1">],</span>
+       <span class="s1">[</span><span class="s4">'Q: Dec. gold climbs $9.40, or 0.7%, to settle at $1,356.90/oz</span><span class="s5">\n</span><span class="s4">A:'</span><span class="s1">,</span><span class="s4">'up'</span><span class="s1">,</span><span class="s4">'3'</span><span class="s1">],</span>
+       <span class="s1">[</span><span class="s4">'Q: Gold struggles; silver slides, base metals falter</span><span class="s5">\n</span><span class="s4">A:'</span><span class="s1">,</span><span class="s4">'up'</span><span class="s1">,</span><span class="s4">'4'</span><span class="s1">],</span>
+       <span class="s1">[</span><span class="s4">'Q: feb. gold ends up $9.60, or 1.1%, at $901.60 an ounce</span><span class="s5">\n</span><span class="s4">A:'</span><span class="s1">,</span><span class="s4">'up'</span><span class="s1">,</span><span class="s4">'5'</span><span class="s1">],</span>
+        <span class="s1">[</span><span class="s4">'Q: dent research : is gold</span><span class="s5">\'</span><span class="s4">s day in the sun coming soon?</span><span class="s5">\n</span><span class="s4">A:'</span><span class="s1">,</span><span class="s4">'none'</span><span class="s1">,</span><span class="s4">'6'</span><span class="s1">]</span>
+      <span class="s1">]</span>
+<span class="s1">prefix = open(</span><span class="s4">'config/prompt/HEADLINES/prefix_e8.txt'</span><span class="s1">).read()</span>
+<span class="s1">raw_data = copy.deepcopy(dev)</span>
+<span class="s1">data = FrugalGPT.formatdata(dev,prefix)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Next let us load a LLMCascade instance. 
+</span><span class="s0">#%% 
+</span><span class="s1">MyCascade = FrugalGPT.LLMCascade()</span>
+<span class="s1">MyCascade.load(loadpath=</span><span class="s4">&quot;strategy/HEADLINES/&quot;</span><span class="s1">,budget=</span><span class="s2">0.000665</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Let us take a look on LLMCascade's generation on one query. 
+</span><span class="s0">#%% 
+</span><span class="s1">index = </span><span class="s2">1</span>
+<span class="s1">query = data[index][</span><span class="s2">0</span><span class="s1">]</span>
+<span class="s1">query_raw = raw_data[index][</span><span class="s2">0</span><span class="s1">]</span>
+<span class="s1">genparams=FrugalGPT.GenerationParameter(max_tokens=</span><span class="s2">50</span><span class="s1">, temperature=</span><span class="s2">0.1</span><span class="s1">, stop=[</span><span class="s4">'</span><span class="s5">\n</span><span class="s4">'</span><span class="s1">])</span>
+<span class="s1">answer = MyCascade.get_completion(query=query,genparams=genparams)</span>
+<span class="s1">cost = MyCascade.get_cost()</span>
+<span class="s1">print(</span><span class="s4">&quot;query:&quot;</span><span class="s1">,query_raw)</span>
+<span class="s1">print(</span><span class="s4">&quot;FrugalGPT LLMCascade answer:&quot;</span><span class="s1">,answer)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Now we can pass all the queries to both LLMCascade and vanilla GPT-4, and compare their performance. 
+</span><span class="s0">#%% 
+# batch generation</span>
+<span class="s1">result = MyCascade.get_completion_batch(queries=data,genparams=genparams)</span>
+<span class="s1">result_GPT4 = MyLLMforAll.get_completion_batch(queries=data,genparams=genparams,service_name=</span><span class="s4">'openaichat/gpt-4'</span><span class="s1">)</span>
+<span class="s1">print(</span><span class="s4">&quot;FrugalGPT LLMCascade generations&quot;</span><span class="s1">)</span>
+<span class="s1">display(result)</span>
+<span class="s1">display(FrugalGPT.compute_score(result))</span>
+<span class="s1">print(</span><span class="s4">&quot;GPT-4 generations&quot;</span><span class="s1">)</span>
+<span class="s1">display(result_GPT4)</span>
+<span class="s1">display(FrugalGPT.compute_score(result_GPT4))</span>
+<span class="s0">#%% md 
+</span><span class="s1">Overall, FrugalGPT LLMCascade gives the same performance but incurs a much smaller cost. This data is of course quite small; Later we will see the evaluation on a larger dataset. 
+</span><span class="s0">#%% md 
+</span><span class="s1">### Using FrugalGPT-LLMCascade for your own data 
+Interested in using FrugalGPT for your own data? No problem! The following code snippnet demonstrates how to do it. 
+</span><span class="s0">#%% md 
+</span><span class="s1">The first thing is to load the training dataset. 
+</span><span class="s0">#%% 
+# load data</span>
+<span class="s1">dev = FrugalGPT.loadcsvdata(</span><span class="s4">&quot;data/HEADLINES/train.csv&quot;</span><span class="s1">)</span>
+<span class="s1">dev = dev[</span><span class="s2">0</span><span class="s1">:</span><span class="s2">500</span><span class="s1">]</span>
+<span class="s1">prefix = open(</span><span class="s4">'config/prompt/HEADLINES/prefix_e8.txt'</span><span class="s1">).read()</span>
+<span class="s1">data = FrugalGPT.formatdata(dev,prefix)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Second, specify the budget per query, and then train the model. In this example, only 3 APIs from OpenAI and AI21 are used, and thus setting up OpenAI and AI21 API keys is enough. Warning: The training process can take a while on large datasets! 
+</span><span class="s0">#%% 
+# train the model</span>
+<span class="s1">MyCascade = FrugalGPT.LLMCascade()</span>
+<span class="s1">service_names = [</span><span class="s4">'openaichat/gpt-3.5-turbo'</span><span class="s1">,</span><span class="s4">'openaichat/gpt-4'</span><span class="s1">,</span><span class="s4">'ai21/j1-large'</span><span class="s1">]</span>
+<span class="s1">user_budget = </span><span class="s2">0.002</span>
+<span class="s1">result = MyCascade.train(data,budget=user_budget,service_names=service_names)</span>
+<span class="s0">#%% 
+# save to disk</span>
+<span class="s1">MyCascade.save(savepath=</span><span class="s4">&quot;strategy/TEST/&quot;</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Now the model has been saved to disk. You can load it as follows for future applications. 
+</span><span class="s0">#%% 
+</span><span class="s1">MyCascade = FrugalGPT.LLMCascade()</span>
+<span class="s1">MyCascade.load(loadpath=</span><span class="s4">&quot;strategy/TEST/&quot;</span><span class="s1">,budget=user_budget)</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Performance evaluation 
+Now let us evaluate the performance of FrugalGPT. We use LLMCascade on the HEADLINES dataset as an example. 
+</span><span class="s0">#%% 
+</span><span class="s1">test = FrugalGPT.loadcsvdata(</span><span class="s4">&quot;data/HEADLINES/test.csv&quot;</span><span class="s1">)</span>
+<span class="s1">prefix = open(</span><span class="s4">'config/prompt/HEADLINES/prefix_e8.txt'</span><span class="s1">).read()</span>
+<span class="s1">data_eval = FrugalGPT.formatdata(test,prefix)</span>
+<span class="s1">data_eval = data_eval[</span><span class="s2">0</span><span class="s1">:</span><span class="s2">500</span><span class="s1">]</span>
+<span class="s1">genparams=FrugalGPT.GenerationParameter(max_tokens=</span><span class="s2">50</span><span class="s1">, temperature=</span><span class="s2">0.1</span><span class="s1">, stop=[</span><span class="s4">'</span><span class="s5">\n</span><span class="s4">'</span><span class="s1">])</span>
+<span class="s1">result_GPT4 = MyLLMforAll.get_completion_batch(queries=data_eval,genparams=genparams,service_name=</span><span class="s4">'openaichat/gpt-4'</span><span class="s1">)</span>
+<span class="s1">print(</span><span class="s4">&quot;GPT-4 generations&quot;</span><span class="s1">)</span>
+<span class="s1">display(result_GPT4)</span>
+<span class="s1">display(FrugalGPT.compute_score(result_GPT4))</span>
+<span class="s1">result = MyCascade.get_completion_batch(queries=data_eval,genparams=genparams)</span>
+<span class="s1">print(</span><span class="s4">&quot;FrugalGPT LLMCascade generations&quot;</span><span class="s1">)</span>
+<span class="s1">display(result)</span>
+<span class="s1">display(FrugalGPT.compute_score(result))</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Full performance evaluation 
+Now let us evaluate the performance of FrugalGPT. We use LLMCascade on the HEADLINES dataset as an example. Warning: This is also going to be slow. 
+</span><span class="s0">#%% md 
+</span><span class="s1">First, we load the evaluation dataset and the LLMCascade. 
+</span><span class="s0">#%% 
+</span><span class="s1">test = FrugalGPT.loadcsvdata(</span><span class="s4">&quot;data/HEADLINES/test.csv&quot;</span><span class="s1">)</span>
+<span class="s1">prefix = open(</span><span class="s4">'config/prompt/HEADLINES/prefix_e8.txt'</span><span class="s1">).read()</span>
+<span class="s1">data_eval = FrugalGPT.formatdata(test,prefix)</span>
+<span class="s1">print(</span><span class="s4">&quot;test data size:&quot;</span><span class="s1">,len(data_eval))</span>
+<span class="s1">MyCascade = FrugalGPT.LLMCascade()</span>
+<span class="s1">MyCascade.load(loadpath=</span><span class="s4">&quot;strategy/HEADLINES/&quot;</span><span class="s1">,budget=</span><span class="s2">0.000665</span><span class="s1">)</span>
+<span class="s0">#MyCascade.load(loadpath=&quot;strategy/HEADLINES/&quot;,budget=100)</span>
+<span class="s0">#%% md 
+</span><span class="s1">And then let us evaluate it on the evaluation dataset. 
+</span><span class="s0">#%% 
+</span><span class="s1">genparams=FrugalGPT.GenerationParameter(max_tokens=</span><span class="s2">50</span><span class="s1">, temperature=</span><span class="s2">0.1</span><span class="s1">, stop=[</span><span class="s4">'</span><span class="s5">\n</span><span class="s4">'</span><span class="s1">])</span>
+<span class="s1">result_GPT4 = MyLLMforAll.get_completion_batch(queries=data_eval,genparams=genparams,service_name=</span><span class="s4">'openaichat/gpt-4'</span><span class="s1">)</span>
+<span class="s1">print(</span><span class="s4">&quot;GPT-4 generations&quot;</span><span class="s1">)</span>
+<span class="s1">display(result_GPT4)</span>
+<span class="s1">display(FrugalGPT.compute_score(result_GPT4))</span>
+<span class="s1">result = MyCascade.get_completion_batch(queries=data_eval,genparams=genparams)</span>
+<span class="s1">print(</span><span class="s4">&quot;FrugalGPT LLMCascade generations&quot;</span><span class="s1">)</span>
+<span class="s1">display(result)</span>
+<span class="s1">display(FrugalGPT.compute_score(result))</span>
+<span class="s0">#%% md 
+</span><span class="s1">Overall, LLMCascade achieves better performance than GPT-4 with a 10x smaller cost. 
+</span><span class="s0">#%% md 
+</span><span class="s1">## &lt;font color=&quot;red&quot;&gt;*Stretch Exercise*&lt;/font&gt; 
+ 
+&lt;font color=&quot;red&quot;&gt;(Not required). Choose a set of LLMs and play with FrugalGPT using your own dataset. Note: While this is not required, it can be counted as bonus toward earning a 😃 for this week's assignment! 
+</span><span class="s0">#%% md 
+</span><span class="s1"># Reinforcement Learning with Human Feedback (RLHF) 
+Open AI introduced RLHF as an approach to tuning their GPT model class through multiple generative responses, and the request the users provide minimal feedback (e.g. “thumbs up”, “thumbs down”) to express their evaluation of the generated text. While Open AI did not describe how they implement RLHF in detail, a number of open source approaches are emerging. We do not provide a specific example here, but point to a [popular repository](https://github.com/opendilab/awesome-RLHF) tracking such open RLHF theory and code developments.   
+ 
+</span><span class="s0">#%% md 
+</span><span class="s1"># LLMs and Annotating Texts 
+ 
+We will be using code from this tutorial to illustrate how LLMs can be used in action: 
+ 
+https://github.com/vminvsky/css-llm-tutorial. 
+ 
+## NOTE 
+ 
+You're going to have to upload the data and requirements to make sure that this sectoin works correctly. 
+ 
+In this section, we will see how LLMs can be used to annotate and generate data for studying linguistic constructs. 
+ 
+Our goals are as follows: 
+ 
+* **Goal 1:** Learn langchain. 
+    * Langchain is the most common library for interacting with LLMs in Python! 
+ 
+* **Goal 2:** Annotate a dataset with ChatGPT 
+    * Annotate texts as being sarcastic or not using ChatGPT. 
+ 
+* **Goal 3:** Generate Synthetic Data for a Specific Construct of Interest 
+    * Generate new examples of sarcastic and non-sarcastic texts. 
+     
+A few requirements. 
+1. You will need an OpenAI key to generate the data. Because the data has already been generated, you won't need it to explore the synthetic data, but if you want to re-run the generation you will need to obtain a key. You can signup [here](https://openai.com/blog/openai-api) 
+2. *(If you have an API key)* In the .env file in root add your API key. 
+3. Run the requirements.txt file to pip install all the necessary libraries. 
+4. Visit the GitHub link and grab all the data and re 
+</span><span class="s0">#%% md 
+</span><span class="s1">#### Local Setup 
+Let's install all the required libraries to go through this document. 
+ 
+requirements - NOTE - this code will only work with older versions of openai and langchain. 
+ 
+pandas 
+ 
+langchain==0.0.205 
+ 
+numpy==1.22.4 
+ 
+scipy==1.10.1 
+ 
+python-dotenv 
+ 
+openai==0.27.8 
+</span><span class="s0">#%% 
+# requirements = &quot;/content/requirements.txt&quot;</span>
+<span class="s0"># !pip install -r {requirements}</span>
+<span class="s0">#%% 
+</span><span class="s1">pip install langchain==</span><span class="s2">0.0.205</span>
+<span class="s0">#%% 
+</span><span class="s1">pip install python-dotenv</span>
+<span class="s0">#%% 
+</span><span class="s1">pip install openai==</span><span class="s2">0.27.8</span>
+<span class="s0">#%% 
+</span><span class="s3">import </span><span class="s1">pandas </span><span class="s3">as </span><span class="s1">pd</span>
+<span class="s3">import </span><span class="s1">openai</span>
+<span class="s3">import </span><span class="s1">langchain</span>
+<span class="s3">from </span><span class="s1">dotenv </span><span class="s3">import </span><span class="s1">load_dotenv</span>
+<span class="s3">import </span><span class="s1">os</span>
+<span class="s3">from </span><span class="s1">tqdm </span><span class="s3">import </span><span class="s1">tqdm</span>
+
+<span class="s3">from </span><span class="s1">langchain </span><span class="s3">import </span><span class="s1">LLMChain</span>
+<span class="s3">from </span><span class="s1">langchain.chat_models </span><span class="s3">import </span><span class="s1">ChatOpenAI</span>
+
+<span class="s3">from </span><span class="s1">langchain.prompts </span><span class="s3">import </span><span class="s1">(</span>
+    <span class="s1">ChatPromptTemplate,</span>
+    <span class="s1">PromptTemplate,</span>
+    <span class="s1">SystemMessagePromptTemplate,</span>
+    <span class="s1">AIMessagePromptTemplate,</span>
+    <span class="s1">HumanMessagePromptTemplate,</span>
+<span class="s1">)</span>
+
+<span class="s1">load_dotenv()  </span><span class="s0"># take environment variables from .env.</span>
+<span class="s0">#%% md 
+</span><span class="s1">Run this cell to load the autoreload extension. This allows us to edit .py source files, and re-import them into the notebook for a seamless editing and debugging experience. 
+</span><span class="s0">#%% 
+</span><span class="s1">%load_ext autoreload</span>
+<span class="s1">%autoreload </span><span class="s2">2</span>
+<span class="s0">#%% 
+</span><span class="s1">seed = </span><span class="s2">42    </span><span class="s0"># for reproducibility</span>
+<span class="s0">#%% 
+# OPENAI_API_KEY = os.getenv(&quot;OPENAI_API_KEY&quot;)</span>
+<span class="s1">OPENAI_API_KEY = </span><span class="s4">&quot;your key&quot;</span>
+<span class="s0">#%% md 
+</span><span class="s1">Or if you don't want to keep it in your notebook for safety concerns: 
+</span><span class="s0">#%% 
+</span><span class="s3">import </span><span class="s1">getpass</span>
+<span class="s1">OPENAI_API_KEY = getpass.getpass()</span>
+<span class="s0">#%% 
+</span><span class="s1">openai.api_key = OPENAI_API_KEY</span>
+<span class="s0">#%% md 
+</span><span class="s1">### 1. Dataset Introduction 
+ 
+The dataset includes two columns: `text` and `labels`. Where `text` is a Tweet and `label` is either sarcastic or non-sarcastic. 
+</span><span class="s0">#%% 
+</span><span class="s3">def </span><span class="s1">example_rows(df):</span>
+    <span class="s1">print(</span><span class="s4">&quot;Example of a sarcastic text&quot;</span><span class="s1">)</span>
+    <span class="s1">print(df[df[</span><span class="s4">&quot;labels&quot;</span><span class="s1">]==</span><span class="s4">&quot;sarcastic&quot;</span><span class="s1">].iloc[</span><span class="s2">0</span><span class="s1">][</span><span class="s4">&quot;text&quot;</span><span class="s1">])</span>
+    <span class="s1">print()</span>
+    <span class="s1">print(</span><span class="s4">&quot;Example of a non-sarcastic text&quot;</span><span class="s1">)</span>
+    <span class="s1">print(df[df[</span><span class="s4">&quot;labels&quot;</span><span class="s1">]==</span><span class="s4">&quot;not-sarcastic&quot;</span><span class="s1">].iloc[</span><span class="s2">0</span><span class="s1">][</span><span class="s4">&quot;text&quot;</span><span class="s1">])</span>
+<span class="s0">#%% 
+</span><span class="s1">df = pd.read_json(</span><span class="s4">&quot;../data/llm_data/sarcasm.json&quot;</span><span class="s1">, orient=</span><span class="s4">&quot;records&quot;</span><span class="s1">)</span>
+<span class="s0">#%% 
+</span><span class="s1">print(</span><span class="s4">&quot;Number of rows: &quot;</span><span class="s1">,len(df))</span>
+<span class="s1">print(</span><span class="s4">&quot;Number of sarcastic comments: &quot;</span><span class="s1">,len(df[df[</span><span class="s4">&quot;labels&quot;</span><span class="s1">]==</span><span class="s4">&quot;sarcastic&quot;</span><span class="s1">]))</span>
+<span class="s1">print()</span>
+<span class="s1">example_rows(df)</span>
+
+<span class="s0">#%% md 
+</span><span class="s1">### 2. Langchain 
+&gt; [LangChain](https://python.langchain.com/docs/get_started/quickstart) is a framework for developing applications powered by language models. 
+ 
+We will use Langchain to *annotate* and *generate* sarcastic texts! Langchain is currently the most widely used Python library for interacting with LLMs programatically. It contains a lot of useful functionalities, but we will focuse on the simple case: given a prompt, generate text! 
+ 
+To design prompts we need to add both a `system` prompt and a `message` prompt. In Langchain this corresponds to `HumanMessagePromptTemplate` and `SytemMessagePromptTemplate`. To read more about prompt templates you can look at the Langchain documentation [here](https://python.langchain.com/docs/modules/model_io/prompts/prompt_templates/). 
+ 
+All prompts are included in the `utils.py` file but we will add an example below. 
+ 
+The **system** message basically puts the model into a certain headspace through meta-instructions. E.g., &quot;You are a helpful assistant!&quot;. 
+ 
+The **human message** instead includes the task explanation. 
+ 
+In this code, we ask the model to generate `{num_generations}` (for example 10) `{direction}` (for example sarcastic) comments. 
+ 
+The function will then return a list with the two messages which we will feed into Langchain's LLM. :) 
+ 
+ 
+```py 
+def sarcasm_simple_prompt(self) -&gt; list: 
+    system_message = SystemMessagePromptTemplate( 
+        prompt=PromptTemplate( 
+            input_variables=[], 
+            template=&quot;You are a model that generates sarcastic and non-sarcastic texts.&quot; 
+        ) 
+    ) 
+    human_message = HumanMessagePromptTemplate( 
+        prompt=PromptTemplate( 
+            input_variables=[&quot;num_generations&quot;, &quot;direction&quot;], 
+            template=&quot;Generate {num_generations} {direction} texts. Ensure diversity in the generated texts.&quot; 
+        ) 
+    ) 
+    return [system_message, human_message] 
+``` 
+See [here](https://github.com/vminvsky/css-llm-tutorial/blob/main/utils.py) for more exaples. 
+ 
+ 
+</span><span class="s0">#%% md 
+</span><span class="s1">### 2.1 Annotations 
+Let's annotate texts as being sarcastic or not, and report the performance! 
+ 
+First, let's try it on one text: 
+&gt; do people with clear skin feel accomplished?? superior??? comfortable in their own skin???? whats that like lmfao 
+ 
+*Only run the code if you have an OpenAI key, otherwise just import the files with already generated data.* 
+</span><span class="s0">#%% 
+</span><span class="s3">def </span><span class="s1">sarcasm_annotate_prompt() -&gt; list:</span>
+    <span class="s1">system_message = SystemMessagePromptTemplate(</span>
+        <span class="s1">prompt=PromptTemplate(</span>
+            <span class="s1">input_variables=[],</span>
+            <span class="s1">template=</span><span class="s4">&quot;You are a model that annotates sarcastic and non-sarcastic texts.&quot;</span>
+        <span class="s1">)</span>
+    <span class="s1">)</span>
+    <span class="s1">human_message = HumanMessagePromptTemplate(</span>
+        <span class="s1">prompt=PromptTemplate(</span>
+            <span class="s1">input_variables=[</span><span class="s4">&quot;text&quot;</span><span class="s1">],</span>
+            <span class="s1">template=</span><span class="s4">&quot;&quot;&quot;Classify the following text as being sarcastic or non-sarcastic. Reply with 'Sarcastic' if it's sarcastic and 'Non-sarcastic' if it's non-sarcastic. 
+            Text: {text} 
+            &quot;&quot;&quot;</span>
+        <span class="s1">)</span>
+    <span class="s1">)</span>
+    <span class="s3">return </span><span class="s1">[system_message, human_message]</span>
+<span class="s0">#%% 
+</span><span class="s1">example_text = </span><span class="s4">&quot;do people with clear skin feel accomplished?? superior??? comfortable in their own skin???? whats that like lmfao&quot;</span>
+<span class="s0">#%% 
+</span><span class="s1">llm = ChatOpenAI(model_name=</span><span class="s4">&quot;gpt-3.5-turbo&quot;</span><span class="s1">, temperature=</span><span class="s2">0.9</span><span class="s1">, openai_api_key=OPENAI_API_KEY)</span>
+<span class="s1">prompt = ChatPromptTemplate.from_messages(sarcasm_annotate_prompt())</span>
+<span class="s1">chain = LLMChain(prompt=prompt, llm=llm)</span>
+<span class="s1">generated = chain.run({</span><span class="s4">&quot;text&quot;</span><span class="s1">: example_text})</span>
+<span class="s0">#%% 
+</span><span class="s1">print(generated)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Great! It seems to work. Now we will iterate through all the sarcastic texts in our document. 
+</span><span class="s0">#%% md 
+</span><span class="s1">Let's see how sarcastic/nonsarcastic examples look like: 
+</span><span class="s0">#%% 
+</span>
+<span class="s0">#%% 
+</span><span class="s1">generated = []</span>
+<span class="s1">prompt = ChatPromptTemplate.from_messages(sarcasm_annotate_prompt())</span>
+<span class="s1">chain = LLMChain(prompt=prompt, llm=llm)</span>
+<span class="s3">for </span><span class="s1">i, row </span><span class="s3">in </span><span class="s1">tqdm(df.iterrows(), total=len(df)):</span>
+    <span class="s1">text = row[</span><span class="s4">&quot;text&quot;</span><span class="s1">]</span>
+    <span class="s1">generated.append(chain.run({</span><span class="s4">&quot;text&quot;</span><span class="s1">: text}))</span>
+<span class="s1">df[</span><span class="s4">&quot;predict&quot;</span><span class="s1">] = generated</span>
+<span class="s0">#%% 
+</span><span class="s1">df[</span><span class="s4">&quot;predict&quot;</span><span class="s1">]</span>
+<span class="s0">#%% md 
+</span><span class="s1">The annotations have already been run, so let's just import the dataset. 
+</span><span class="s0">#%% 
+</span><span class="s1">df = pd.read_json(</span><span class="s4">&quot;../data/llm_data/annotate_gpt-3.5-turbo.json&quot;</span><span class="s1">)</span>
+<span class="s0">#%% 
+</span><span class="s3">def </span><span class="s1">process_text(x):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    Process GPT outputs. Otherwise 
+    &quot;&quot;&quot;</span>
+    <span class="s3">if </span><span class="s4">&quot;non-sarcastic&quot; </span><span class="s3">in </span><span class="s1">x.lower():</span>
+        <span class="s3">return </span><span class="s4">&quot;not-sarcastic&quot;</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s3">return </span><span class="s4">&quot;sarcastic&quot;</span>
+
+<span class="s1">df[</span><span class="s4">&quot;predict&quot;</span><span class="s1">] = df[</span><span class="s4">&quot;predict&quot;</span><span class="s1">].apply(</span><span class="s3">lambda </span><span class="s1">x: process_text(x))</span>
+
+<span class="s0">#%% md 
+</span><span class="s1">Let's import some metrics to see how well the predictions are. 
+</span><span class="s0">#%% 
+</span><span class="s3">from </span><span class="s1">sklearn.metrics </span><span class="s3">import </span><span class="s1">accuracy_score, precision_recall_fscore_support</span>
+<span class="s1">accuracy = accuracy_score(df[</span><span class="s4">&quot;target&quot;</span><span class="s1">], df[</span><span class="s4">&quot;predict&quot;</span><span class="s1">])</span>
+<span class="s1">precision, recall, f1, _ = precision_recall_fscore_support(df[</span><span class="s4">&quot;target&quot;</span><span class="s1">], df[</span><span class="s4">&quot;predict&quot;</span><span class="s1">], average=</span><span class="s4">&quot;macro&quot;</span><span class="s1">)</span>
+
+<span class="s1">print(</span><span class="s4">f&quot;Accuracy: </span><span class="s5">{</span><span class="s1">accuracy</span><span class="s5">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+<span class="s1">print(</span><span class="s4">f&quot;F1 score: </span><span class="s5">{</span><span class="s1">round(f1, </span><span class="s2">3</span><span class="s1">)</span><span class="s5">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Not amazing! 
+ 
+Instead, we can try to generate more data. 
+</span><span class="s0">#%% md 
+</span><span class="s1">### 2.2 Generating data 
+Now we'll quickly go over how to generate more sarcastic texts. This can be used for *de-novo* dataset creation to augment your data. 
+ 
+We'll use a grounded prompting technique, where we'll rewrite real tweets to make them sarcastic or not! 
+ 
+Let's rewrite this Tweet as an example: 
+&gt; Tapping a tuning fork and seeing who resonates 
+</span><span class="s0">#%% 
+</span><span class="s3">def </span><span class="s1">sarcasm_grounded_prompt() -&gt; list:</span>
+    <span class="s1">system_message = SystemMessagePromptTemplate(</span>
+        <span class="s1">prompt=PromptTemplate(</span>
+            <span class="s1">input_variables=[],</span>
+            <span class="s1">template=</span><span class="s4">&quot;You are a model that generates sarcastic and non-sarcastic texts.&quot;</span>
+        <span class="s1">)</span>
+    <span class="s1">)</span>
+    <span class="s1">human_message = HumanMessagePromptTemplate(</span>
+        <span class="s1">prompt=PromptTemplate(</span>
+            <span class="s1">input_variables=[</span><span class="s4">&quot;text&quot;</span><span class="s1">, </span><span class="s4">&quot;num_generations&quot;</span><span class="s1">, </span><span class="s4">&quot;direction&quot;</span><span class="s1">],</span>
+            <span class="s1">template=</span><span class="s4">&quot;&quot;&quot;Rewrite the following text {num_generations} times to make it {direction}. 
+            Make as few changes as possible to the text and stay true to its underlying style. 
+            Text: {text} 
+            &quot;&quot;&quot;</span>
+        <span class="s1">)</span>
+    <span class="s1">)</span>
+    <span class="s3">return </span><span class="s1">[system_message, human_message]</span>
+<span class="s0">#%% 
+</span><span class="s1">example_text = </span><span class="s4">&quot;Tapping a tuning fork and seeing who resonates&quot;</span>
+<span class="s0">#%% 
+</span><span class="s1">llm = ChatOpenAI(model_name=</span><span class="s4">&quot;gpt-3.5-turbo&quot;</span><span class="s1">, temperature=</span><span class="s2">0.9</span><span class="s1">, max_tokens=</span><span class="s2">512</span><span class="s1">, openai_api_key=OPENAI_API_KEY)</span>
+<span class="s1">prompt = ChatPromptTemplate.from_messages(sarcasm_grounded_prompt())</span>
+<span class="s1">chain = LLMChain(prompt=prompt, llm=llm)</span>
+<span class="s1">generated = chain.run({</span><span class="s4">&quot;text&quot;</span><span class="s1">: example_text, </span><span class="s4">&quot;direction&quot;</span><span class="s1">: </span><span class="s4">&quot;sarcastic&quot;</span><span class="s1">, </span><span class="s4">&quot;num_generations&quot;</span><span class="s1">: </span><span class="s2">1</span><span class="s1">})</span>
+<span class="s0">#%% 
+</span><span class="s1">print(generated)</span>
+<span class="s0">#%% md 
+</span><span class="s1">A little on the nose...GPT4 is better (sarcasm is hard)! 
+ 
+Don't run the following code if OpenAI key not connected, just import csv! 
+</span><span class="s0">#%% 
+</span><span class="s1">generated = []</span>
+<span class="s3">for </span><span class="s1">i, row </span><span class="s3">in </span><span class="s1">tqdm(df.iterrows(), total=len(df)):</span>
+    <span class="s3">for </span><span class="s1">direction </span><span class="s3">in </span><span class="s1">[</span><span class="s4">&quot;sarcastic&quot;</span><span class="s1">, </span><span class="s4">&quot;not-sarcastic&quot;</span><span class="s1">]: </span><span class="s0"># choose direction</span>
+        <span class="s1">text = row[</span><span class="s4">&quot;text&quot;</span><span class="s1">]</span>
+        <span class="s1">prompt = ChatPromptTemplate.from_messages(sarcasm_grounded_prompt())</span>
+        <span class="s1">chain = LLMChain(prompt=prompt, llm=llm)</span>
+        <span class="s1">generated.append(chain.run({</span><span class="s4">&quot;text&quot;</span><span class="s1">: text, </span><span class="s4">&quot;direction&quot;</span><span class="s1">: direction}))</span>
+
+<span class="s1">df[</span><span class="s4">&quot;augmented_text&quot;</span><span class="s1">] = generated</span>
+<span class="s0">#%% 
+</span><span class="s1">df = pd.read_json(</span><span class="s4">&quot;../data/grounded_gpt-3.5-turbo.json&quot;</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Analysis 
+ 
+Let's see if there are ideosyncracies in the generated sarcastic texts! 
+ 
+There is a lot that can be done here, but we will look at the prevelance of &quot;Oh&quot; in sarcastic comments between the two groups. 
+</span><span class="s0">#%% 
+</span><span class="s1">generated_sarcastic = df[df[</span><span class="s4">&quot;labels&quot;</span><span class="s1">]==</span><span class="s4">&quot;sarcastic&quot;</span><span class="s1">][</span><span class="s4">&quot;augmented_text&quot;</span><span class="s1">].values</span>
+<span class="s1">original_sarcastic = df[df[</span><span class="s4">&quot;target&quot;</span><span class="s1">]==</span><span class="s4">&quot;sarcastic&quot;</span><span class="s1">].drop_duplicates(subset=</span><span class="s4">&quot;text&quot;</span><span class="s1">)[</span><span class="s4">&quot;text&quot;</span><span class="s1">].values</span>
+<span class="s0">#%% 
+</span><span class="s1">oh_synthetic = len([k </span><span class="s3">for </span><span class="s1">k </span><span class="s3">in </span><span class="s1">generated_sarcastic </span><span class="s3">if </span><span class="s4">&quot;oh&quot; </span><span class="s3">in </span><span class="s1">k.lower()]) / len(generated_sarcastic)</span>
+<span class="s1">oh_real = len([k </span><span class="s3">for </span><span class="s1">k </span><span class="s3">in </span><span class="s1">original_sarcastic </span><span class="s3">if </span><span class="s4">&quot;oh&quot; </span><span class="s3">in </span><span class="s1">k.lower()]) / len(original_sarcastic)</span>
+
+<span class="s1">print(</span><span class="s4">f&quot;'Oh' present in </span><span class="s5">{</span><span class="s1">round(oh_synthetic, </span><span class="s2">3</span><span class="s1">)</span><span class="s5">} </span><span class="s4">of synthetic texts&quot;</span><span class="s1">)</span>
+<span class="s1">print()</span>
+<span class="s1">print(</span><span class="s4">f&quot;'Oh' present in </span><span class="s5">{</span><span class="s1">round(oh_real, </span><span class="s2">3</span><span class="s1">)</span><span class="s5">} </span><span class="s4">of real texts&quot;</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">## &lt;font color=&quot;red&quot;&gt;*Exercise 3*&lt;/font&gt; 
+&lt;font color=&quot;red&quot;&gt;Use LLM to generate some data and compare the differences between model-generated data and actual data. This exercise should not be a repetition of exercise 1. Focus more on analyzing language nuances, qualitatively or quantitatively. You should also notice how the choice of LLM has possibly impacted the language it uses. 
+ 
+ 
+</span><span class="s0">#%% md 
+</span><span class="s1"># How to program with language? 
+</span><span class="s0">#%% md 
+</span><span class="s1">## 0-Shot 
+ 
+Zero-shot learning means that you simply give the model a prompt and accept the output. For some tasks, this is sufficient to achieve strong performance. (For many, it is not). 
+</span><span class="s0">#%% 
+</span><span class="s3">from </span><span class="s1">langchain.llms </span><span class="s3">import </span><span class="s1">OpenAI</span>
+
+<span class="s0"># Initialize the OpenAI model</span>
+<span class="s1">model = OpenAI(model=</span><span class="s4">&quot;gpt-3.5-turbo-instruct&quot;</span><span class="s1">, openai_api_key=openai.api_key)</span>
+
+<span class="s0"># Zero-shot example: Ask a question without giving any examples</span>
+<span class="s1">question = </span><span class="s4">&quot;What is the impact of quantum computing on cryptography?&quot;</span>
+<span class="s1">response = model.generate(prompts=[question])</span>
+<span class="s1">print(response)</span>
+<span class="s0">#%% md 
+</span><span class="s1">## Few-Shot 
+ 
+Few shot learning means that you provide the model with examples (it could be examples for classification tasks or generative tasks), and often more lengthy instructions to inform it of the character of the desired output. 
+ 
+These can be short, long, or (e.g., with Claude) very long. 
+</span><span class="s0">#%% 
+</span><span class="s3">from </span><span class="s1">langchain.llms </span><span class="s3">import </span><span class="s1">OpenAI</span>
+
+<span class="s0"># Initialize the OpenAI model</span>
+<span class="s1">model = OpenAI(model=</span><span class="s4">&quot;gpt-3.5-turbo-instruct&quot;</span><span class="s1">, openai_api_key=openai.api_key)</span>
+
+<span class="s0"># Few-shot example with varying lengths</span>
+<span class="s1">few_shot_prompt = </span><span class="s4">&quot;&quot;&quot; 
+[Short Example] 
+Once upon a time, in a magical forest, a small elf discovered a hidden treasure. 
+ 
+[Long Example] 
+In a mystical forest, shrouded in mist, lived a wise old tree. For centuries, this tree watched over the forest, its branches stretching high into the sky. One day, a young girl ventured into the forest, drawn by legends of ancient magic. As she approached the tree, it whispered secrets of the forest’s past and revealed to her the path to true wisdom. 
+ 
+[Very Long Example] 
+Deep in the heart of a lush and enchanted forest, there was a clearing known for its extraordinary beauty. This clearing was home to a variety of magical creatures, each with their own unique abilities. The most remarkable of these creatures was a unicorn with a shimmering, opalescent mane. This unicorn was not only known for its breathtaking appearance but also for its ability to heal any ailment with a single touch of its horn. One evening, as the sun set, casting a golden glow over the clearing, a group of weary travelers stumbled upon this magical place. Amazed by the wonders they saw, they were greeted by the unicorn, which offered them its healing powers. As they spent the night under the stars, the travelers listened to the stories of the forest told by the creatures, each tale more wondrous than the last. 
+ 
+[Your Task] 
+Write a story about a magical forest that includes a talking animal and a hidden mystery. 
+&quot;&quot;&quot;</span>
+
+<span class="s0">#%% 
+# Generate the story</span>
+<span class="s1">story = model.generate(prompts=[few_shot_prompt])</span>
+<span class="s1">print(story.generations[</span><span class="s2">0</span><span class="s1">][</span><span class="s2">0</span><span class="s1">].text)</span>
+<span class="s0">#%% md 
+</span><span class="s1">Language Models are known to be few-shot learners. While this paper is not included in the class readings this week, I encourage you to check out this famous paper (20K+ citations! ): [Language Models are Few-Shot Learners](https://proceedings.neurips.cc/paper_files/paper/2020/hash/1457c0d6bfcb4967418bfb8ac142f64a-Abstract.html?utm_medium=email&amp;utm_source=transaction) 
+</span><span class="s0">#%% md 
+</span><span class="s1">## Interactive Multi-shot 
+ 
+With interactive multi-shot examples, you can &quot;talk back&quot; to model generations through iterative suggestions that help the model understand what you want (and why). 
+ 
+ 
+ 
+ 
+ 
+ 
+</span><span class="s0">#%% 
+# Interactive multi-shot example</span>
+<span class="s1">context = </span><span class="s4">&quot;&quot;</span>
+<span class="s1">user_inputs = [</span><span class="s4">&quot;Tell me about black holes.&quot;</span><span class="s1">, </span><span class="s4">&quot;Why are they important?&quot;</span><span class="s1">, </span><span class="s4">&quot;Can we see them directly?&quot;</span><span class="s1">]</span>
+
+<span class="s3">for </span><span class="s1">user_input </span><span class="s3">in </span><span class="s1">user_inputs:</span>
+    <span class="s0"># Add user input to the context</span>
+    <span class="s1">context += </span><span class="s4">f&quot;User: </span><span class="s5">{</span><span class="s1">user_input</span><span class="s5">}\n</span><span class="s4">AI:&quot;</span>
+
+    <span class="s0"># Generate response</span>
+    <span class="s1">response = model.generate(prompts=[context])</span>
+
+    <span class="s0"># Add response to the context</span>
+    <span class="s1">context += </span><span class="s4">f&quot; </span><span class="s5">{</span><span class="s1">response</span><span class="s5">}\n</span><span class="s4">&quot;</span>
+
+    <span class="s1">print(</span><span class="s4">f&quot;AI: </span><span class="s5">{</span><span class="s1">response</span><span class="s5">}</span><span class="s4">&quot;</span><span class="s1">)</span>
+
+<span class="s0">#%% md 
+</span><span class="s1">## &lt;font color=&quot;red&quot;&gt;*Exercise 4*&lt;/font&gt; 
+ 
+&lt;font color=&quot;red&quot;&gt;Compare how LLMs change their performance with different shots on your task. If the evalution criterion is quantifiable, such as classification with ground truth labels, plot how accuracy changes. If the evalution criterion cannot be easily quantified, such as the clarity of explaining a concept, use your imagination to do some comparsion (for exmaple, you can ask another LLM to rate its peer :)) Desribe the differences in cells that follow. If you find close-sourced LLM APIs pricy and are unsatisfied with responses from small-sized open-sourced LLMs, you can try large-sized LLMs (such as 70B version Llama-2) with Petals (see [here](https://colab.research.google.com/drive/1uCphNY7gfAUkdDrTx21dZZwCOUDCMPw8?usp=sharing) and [here](https://colab.research.google.com/drive/1Ervk6HPNS6AYVr3xVdQnY5a-TjjmLCdQ)). 
+</span><span class="s0">#%% md 
+</span><span class="s1">## Rule-based 
+ 
+ 
+Some models, like Anthropic’s Claude, touts a rule-based approach to shaping LLM behavior rather than reinforcement of case-by-case human human feedback. It calls this approach  “constitutional AI”, as described in a 2023 paper titled [“Specific vs. General Principles of Constitutional AI”](https://arxiv.org/pdf/2310.13798.pdf). Their argument is that specific feedback may be brittle, and fail to [“mitigate subtle problematic behaviors such as a stated desire for self-preservation or power.”](https://www.anthropic.com/news/specific-versus-general-principles-for-constitutional-ai) The concept underlying Constitutional AI is that users provide AI models a written list of principles or “constitutions” that encourage ethical or otherwise functional behavior. They demonstrate that very general principles (e.g., “do what’s best for humanity”) limit the need to provide numerous rules targeting unwanted behaviors (e.g., amass power, use toxic language, etc.) 
+ 
+ 
+Regardless of their overall approach, you can provide any LLM model with explicit general or specific rules it will attempt to follow. Rules (e.g., “sarcasm is the mocking use of irony”) are less specific than examples (e.g., “this text is not sarcastic”), but their generality can make them broadly relevant to exert more influence on model improvement. See below approaches in Claude and GPT. 
+ 
+</span><span class="s0">#%% 
+</span>
+<span class="s0">#%% md 
+</span><span class="s1"># Use Cases of LLMS 
+ 
+There are many different tasks for which one could apply LLMs according to the approaches we developed above. We showcase several below: 
+</span><span class="s0">#%% md 
+</span><span class="s1">## - Actor - Critic - Improve Object with Critique 
+ 
+You can set up an &quot;Actor-Critic&quot; model by asking the model to generate text, and then ask it to generate a critique, and to regenerate the text according to the critique. In this way, you are instantiating two different models that seek to adversarially improve one another. Consider the following prompts in sequence: 
+ 
+ 
+CODE: 
+“Write story of up to 300 words in length intended for an native English language speaking child audience that involves two anthropomorphized puppies ‘Bumble’ and ‘Gruff’ who go on adventure.” 
+ 
+ 
+“Critique this story regarding its clarity, grammar, consistency, suspense, and surprise. Then rewrite in 300 words accounting for these critiques.” 
+ 
+ 
+“Critique this story regarding its clarity, grammar, consistency, suspense, and surprise. Then rewrite in 300 words accounting for these critiques.” 
+ 
+ 
+A more complicated example using code could involve the following: 
+ 
+</span><span class="s0">#%% 
+</span><span class="s3">import </span><span class="s1">openai</span>
+
+<span class="s3">def </span><span class="s1">critique_and_improve_grammar(text, api_key):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    This function takes a piece of text and uses OpenAI's GPT-4 to critique and improve its grammar. 
+ 
+    Args: 
+    text (str): The text to be critiqued and improved. 
+    api_key (str): Your OpenAI API key. 
+ 
+    Returns: 
+    str: The critiqued and grammatically improved text. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">openai.api_key = api_key</span>
+
+    <span class="s3">try</span><span class="s1">:</span>
+        <span class="s1">response = openai.Completion.create(</span>
+            <span class="s1">model=</span><span class="s4">&quot;text-davinci-003&quot;</span><span class="s1">,  </span><span class="s0"># Replace with &quot;gpt-4&quot; if you have access</span>
+            <span class="s1">prompt=</span><span class="s4">f&quot;Please critique and suggest improvements for the grammar of the following text:</span><span class="s5">\n\n{</span><span class="s1">text</span><span class="s5">}</span><span class="s4">&quot;</span><span class="s1">,</span>
+            <span class="s1">temperature=</span><span class="s2">0.7</span><span class="s1">,</span>
+            <span class="s1">max_tokens=</span><span class="s2">250</span>
+        <span class="s1">)</span>
+        <span class="s3">return </span><span class="s1">response.choices[</span><span class="s2">0</span><span class="s1">].text.strip()</span>
+    <span class="s3">except </span><span class="s1">Exception </span><span class="s3">as </span><span class="s1">e:</span>
+        <span class="s3">return </span><span class="s1">str(e)</span>
+
+<span class="s0"># Example usage</span>
+<span class="s1">api_key = </span><span class="s4">'your-api-key-here'  </span><span class="s0"># Replace with your actual OpenAI API key</span>
+<span class="s1">input_text = </span><span class="s4">&quot;This is a example text that needs grammar checking and improvement.&quot;</span>
+<span class="s1">print(critique_and_improve_grammar(input_text, api_key))</span>
+
+<span class="s0">#%% md 
+</span><span class="s1">## Rewriting texts in different ways (e.g German, Politically Sensitive) 
+ 
+ 
+“Rewrite the following text ‘This is the best hamburger I have ever tasted.’ in Russian and Chinese. 
+ 
+ 
+“Rewrite it as the sentiment might be rendered by a vegetarian” 
+ 
+ 
+“Rewrite it in two sentences with specific, concrete language about an eating experience.” 
+ 
+ 
+“Rewrite it in the style of Proust.” 
+ 
+ 
+“Rewrite it in the style of the following paper abstract: ‘Four score and seven years ago our fathers brought forth on this continent a new nation, conceived in liberty, and dedicated to the proposition that all men are created equal. Now we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battlefield of that war. We have come to dedicate a portion of that field as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this. But in a larger sense we cannot dedicate, we cannot consecrate, we cannot hallow this ground. The brave men, living and dead, who struggled here have consecrated it, far above our poor power to add or detract. The world will little note, nor long remember, what we say here, but it can never forget what they did here. It is for us the living, rather, to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced. It is rather for us to be here dedicated to the great task remaining before us,that from these honored dead we take increased devotion to that cause for which they gave the last full measure of devotion, that we here highly resolve that these dead shall not have died in vain, that this nation, under God, shall have a new birth of freedom, and that government of the people, by the people, for the people, shall not perish from the earth.’” 
+ 
+ 
+ 
+ 
+</span><span class="s0">#%% 
+</span><span class="s3">def </span><span class="s1">generate_text_with_style(text, style, api_key):</span>
+    <span class="s0">&quot;&quot;&quot; 
+    This function takes a piece of text and uses OpenAI's GPT-4 to rewrite it in a specified style. 
+ 
+    Args: 
+    text (str): The original text. 
+    style (str): The desired style ('german_child' or 'conservative'). 
+    api_key (str): Your OpenAI API key. 
+ 
+    Returns: 
+    str: The text rewritten in the specified style. 
+    &quot;&quot;&quot;</span>
+    <span class="s1">openai.api_key = api_key</span>
+
+    <span class="s3">if </span><span class="s1">style == </span><span class="s4">'german_child'</span><span class="s1">:</span>
+        <span class="s1">prompt = </span><span class="s4">f&quot;Translate the following text into German as if it was written by a five-year-old child:</span><span class="s5">\n\n{</span><span class="s1">text</span><span class="s5">}</span><span class="s4">&quot;</span>
+    <span class="s3">elif </span><span class="s1">style == </span><span class="s4">'conservative'</span><span class="s1">:</span>
+        <span class="s1">prompt = </span><span class="s4">f&quot;Rewrite the following text in a politically conservative style:</span><span class="s5">\n\n{</span><span class="s1">text</span><span class="s5">}</span><span class="s4">&quot;</span>
+    <span class="s3">else</span><span class="s1">:</span>
+        <span class="s3">return </span><span class="s4">&quot;Invalid style specified.&quot;</span>
+
+    <span class="s3">try</span><span class="s1">:</span>
+        <span class="s1">response = openai.Completion.create(</span>
+            <span class="s1">model=</span><span class="s4">&quot;text-davinci-003&quot;</span><span class="s1">,  </span><span class="s0"># Replace with &quot;gpt-4&quot; if you have access</span>
+            <span class="s1">prompt=prompt,</span>
+            <span class="s1">temperature=</span><span class="s2">0.7</span><span class="s1">,</span>
+            <span class="s1">max_tokens=</span><span class="s2">150</span>
+        <span class="s1">)</span>
+        <span class="s3">return </span><span class="s1">response.choices[</span><span class="s2">0</span><span class="s1">].text.strip()</span>
+    <span class="s3">except </span><span class="s1">Exception </span><span class="s3">as </span><span class="s1">e:</span>
+        <span class="s3">return </span><span class="s1">str(e)</span>
+
+<span class="s0"># Example usage</span>
+<span class="s1">api_key = </span><span class="s4">'your-api-key-here'  </span><span class="s0"># Replace with your actual OpenAI API key</span>
+<span class="s1">input_text = </span><span class="s4">&quot;This is an example text for style transformation.&quot;</span>
+<span class="s1">style = </span><span class="s4">'german_child'  </span><span class="s0"># Can be 'german_child' or 'conservative'</span>
+<span class="s1">print(generate_text_with_style(input_text, style, api_key))</span>
+
+<span class="s0">#%% md 
+</span><span class="s1">## &lt;font color=&quot;red&quot;&gt;*Exercise 5*&lt;/font&gt; 
+ 
+&lt;font color=&quot;red&quot;&gt;Use an Actor - Critic design to improve LLM's performance on your task or perform some related experiments with language prediction. For example, you might want to investigate how LLMs can more or less effectiveloy predict how different groups of people might respond to a prompt or question (e.g., write a dating profile; answer a survey question). 
+</span><span class="s0">#%% 
+</span></pre>
+</body>
+</html>
